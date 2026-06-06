@@ -47,6 +47,12 @@ Standard shredding with default settings (3 passes):
 sys-shred path/to/file.txt
 ```
 
+Recursive directory shredding:
+
+```bash
+sys-shred path/to/directory --recursive
+```
+
 Customizing the number of overwrite passes:
 
 ```bash

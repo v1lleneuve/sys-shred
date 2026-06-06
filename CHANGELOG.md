@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-06-06
+
+### Added
+- Recursive Directory Shredding: Securely destroy entire directory trees using the `-r` or `--recursive` flag.
+- Integrated `walkdir` for robust filesystem traversal.
+- Enhanced core engine to handle bottom-up directory removal after content destruction.
+
+### Changed
+- Updated CLI schema to support both file and directory targets.
+- Refactored `Shredder` API to accommodate recursive operations.
+
 ## [0.1.0] - 2026-06-06
 
 ### Added

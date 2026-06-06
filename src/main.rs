@@ -22,7 +22,7 @@ fn main() {
 
     // 4. Execute the shredding lifecycle
     // All errors are propagated and handled through a professional exit sequence.
-    if let Err(e) = shredder.shred(&args.path, args.keep) {
+    if let Err(e) = shredder.shred(&args.path, args.recursive, args.keep) {
         eprintln!("\n\x1b[31m[CRITICAL ERROR]\x1b[0m {}", e);
         process::exit(1);
     }

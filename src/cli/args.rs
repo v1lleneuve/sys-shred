@@ -16,16 +16,19 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(
     author = "V1lleneuve",
-    version = "0.1.0",
+    version = "0.2.0",
     about = "Securely shreds files using cryptographic data and metadata obfuscation",
     long_about = "A high-integrity secure deletion tool that bypasses OS file-system caching to ensure hardware-level data destruction."
 )]
 pub struct Args {
-    /// The absolute or relative path to the target file.
-    #[arg(value_name = "FILE_PATH", help = "Path to the file to be destroyed")]
+    /// The absolute or relative path to the target file or directory.
+    #[arg(
+        value_name = "PATH",
+        help = "Path to the file or directory to be destroyed"
+    )]
     pub path: PathBuf,
 
-    /// The number of times to overwrite the file with random data.
+    /// Number of overwrite passes to perform.
     #[arg(
         short,
         long,
@@ -33,6 +36,14 @@ pub struct Args {
         help = "Number of cryptographic overwrite passes (Default: 3)"
     )]
     pub passes: u32,
+
+    /// Recursively shred directories and their contents.
+    #[arg(
+        short,
+        long,
+        help = "Recursively destroy directories and their contents"
+    )]
+    pub recursive: bool,
 
     /// Enable verbose logging for granular visibility into the shredding process.
     #[arg(short, long, help = "Enable detailed debug output")]
