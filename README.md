@@ -2,17 +2,21 @@
 
 A high-integrity command-line utility for secure file erasure and anti-forensics in Rust.
 
+> [!WARNING]  
+> **Irreversible Data Destruction**  
+> Data processed by `sys-shred` is physically overwritten and cannot be recovered by forensic software. Use this utility with extreme caution, especially when using the recursive flag.
+
 ## Overview
 
-sys-shred is designed to irreversibly destroy file data by bypassing standard operating system caching mechanisms. It ensures that data is physically overwritten on the storage medium, metadata is obfuscated, and the file is securely unlinked from the filesystem.
+`sys-shred` is a forensic-grade tool designed to irreversibly destroy file data by bypassing standard operating system caching mechanisms. It ensures that data is physically committed to the storage medium, metadata is obfuscated, and the file entry is securely unlinked from the filesystem.
 
 ## Features
 
-- Multi-pass cryptographic overwriting using cryptographically secure random numbers.
-- Hardware-level persistence enforcement via mandatory file synchronization.
-- Filename and metadata obfuscation through random alphanumeric renaming.
-- Automated file truncation to zero bytes before deletion.
-- Real-time progress reporting for interactive terminal environments.
+- **Cryptographic Overwriting**: Multi-pass destruction using cryptographically secure random entropy.
+- **Recursive Shredding**: Securely destroy entire directory trees and their contents.
+- **Hardware Persistence**: Mandatory `sync_all` enforcement to bypass OS write-behind caching.
+- **Metadata Scrubbing**: Automated filename randomization and truncation to clear filesystem metadata.
+- **Interactive UI**: Real-time progress reporting for granular visibility.
 
 ## Installation
 
@@ -41,39 +45,37 @@ The compiled binary will be located at `target/release/sys-shred`.
 
 ## Usage
 
-Standard shredding with default settings (3 passes):
+> [!TIP]  
+> Run `sys-shred --help` for a full list of commands and configuration options.
 
+**Standard file shredding (3 passes):**
 ```bash
-sys-shred path/to/file.txt
+sys-shred confidential_document.pdf
 ```
 
-Recursive directory shredding:
-
+**Recursive directory shredding:**
 ```bash
-sys-shred path/to/directory --recursive
+sys-shred ./sensitive_folder --recursive
 ```
 
-Customizing the number of overwrite passes:
-
+**Overwriting without final deletion:**
 ```bash
-sys-shred path/to/file.txt --passes 5
-```
-
-Obfuscating data without deleting the final file entry:
-
-```bash
-sys-shred path/to/file.txt --keep
+sys-shred verification_target.bin --keep
 ```
 
 ## Security Model
 
-The tool follows a multi-stage destruction lifecycle:
+`sys-shred` follows a rigorous multi-stage destruction lifecycle:
 
-1. Data Destruction: The file is overwritten N times with random data generated from a secure entropy source.
-2. Persistence: The tool calls `sync_all` after every pass to bypass OS write buffers.
-3. Obfuscation: The filename is randomized to prevent path-based recovery.
-4. Truncation: File length is set to zero to clear filesystem size metadata.
-5. Unlinking: The file entry is removed from the directory structure.
+1.  **Data Destruction**: The file is overwritten $N$ times with random data generated from a secure entropy source.
+2.  **Persistence**: The tool forces a hardware flush after every pass to ensure data bypasses volatile RAM buffers.
+3.  **Obfuscation**: The filename is randomized to a 16-character alphanumeric string to prevent path-based recovery.
+4.  **Truncation**: File length is set to zero bytes to clear filesystem size metadata.
+5.  **Unlinking**: The file entry is removed from the directory structure.
+
+> [!NOTE]  
+> **SSD & Flash Storage Note**  
+> On modern SSDs and Flash-based media, "wear leveling" and "TRIM" algorithms may move data to different physical blocks. While `sys-shred` attempts to overwrite the mapped logical blocks, hardware-level remapping is a physical characteristic of the drive.
 
 ## License
 
