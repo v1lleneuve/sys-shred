@@ -1,0 +1,21 @@
+# Build Artifacts
+/target
+/docs/
+
+# IDE & Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Security & Environment
+.env
+*.pem
+*.key
+
+# Testing
+# Ignore any local test files generated during manual testing
+test_*.txt
+random_*.txt
+tmp/
