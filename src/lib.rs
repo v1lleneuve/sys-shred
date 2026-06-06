@@ -4,6 +4,8 @@
 //! file erasure. It is designed for use in both the `sys-shred` CLI and other
 //! Rust applications requiring reliable data destruction.
 
+#![deny(missing_docs)]
+
 pub mod cli;
 pub mod core;
 pub mod error;

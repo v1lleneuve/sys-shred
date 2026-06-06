@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2026-06-06
+
+### Fixed
+- Hardened recursive traversal: Now explicitly handles and reports filesystem errors (e.g., permission issues).
+- Zero-panic UI: Implemented safe fallback for terminal progress styles.
+- Removed unused imports to ensure clean compilation.
+
+### Added
+- Automated dependency management via GitHub Dependabot.
+- Strict documentation enforcement with `#![deny(missing_docs)]`.
+
 ## [0.2.0] - 2026-06-06
 
 ### Added

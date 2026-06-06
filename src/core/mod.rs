@@ -12,7 +12,7 @@ use crate::ui::ProgressReporter;
 use metadata::MetadataHandler;
 use overwrite::Overwriter;
 use std::fs::{self, OpenOptions};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use unlink::Unlinker;
 use walkdir::WalkDir;
 
@@ -107,12 +107,19 @@ impl Shredder {
                 )));
             }
 
-            // Collect all entries to avoid modification-during-iteration issues
-            let entries: Vec<PathBuf> = WalkDir::new(path)
-                .into_iter()
-                .filter_map(|e| e.ok())
-                .map(|e| e.into_path())
-                .collect();
+            // Collect all entries and handle potential traversal errors
+            let mut entries = Vec::new();
+            for entry in WalkDir::new(path) {
+                match entry {
+                    Ok(e) => entries.push(e.into_path()),
+                    Err(e) => {
+                        return Err(ShredError::Io(std::io::Error::other(format!(
+                            "Failed to access directory entry: {}",
+                            e
+                        ))))
+                    }
+                }
+            }
 
             // Shred files first
             for entry in entries.iter().filter(|p| p.is_file()) {

@@ -16,7 +16,7 @@ use std::path::PathBuf;
 #[derive(Parser, Debug)]
 #[command(
     author = "V1lleneuve",
-    version = "0.2.0",
+    version = "0.2.1",
     about = "Securely shreds files using cryptographic data and metadata obfuscation",
     long_about = "A high-integrity secure deletion tool that bypasses OS file-system caching to ensure hardware-level data destruction."
 )]

@@ -28,14 +28,14 @@ impl ProgressReporter {
     /// * `passes` - The total number of passes to display in the progress bar.
     pub fn start_overwrite(&self, passes: u32) {
         self.multi_bar.set_length(passes as u64);
-        self.multi_bar.set_style(
-            ProgressStyle::default_bar()
-                .template(
-                    "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({msg})",
-                )
-                .expect("Critical UI Error: Failed to initialize progress style")
-                .progress_chars("#>-"),
-        );
+
+        let style = ProgressStyle::default_bar()
+            .template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({msg})",
+            )
+            .unwrap_or_else(|_| ProgressStyle::default_bar());
+
+        self.multi_bar.set_style(style.progress_chars("#>-"));
         self.multi_bar
             .set_message("Initializing high-integrity overwrite...");
     }
