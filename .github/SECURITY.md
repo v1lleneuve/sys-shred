@@ -6,7 +6,8 @@ The following versions of sys-shred are currently supported with security update
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | Yes                |
+| 0.2.x   | :white_check_mark: |
+| 0.1.x   | :warning: Legacy   |
 
 ## Reporting a Vulnerability
 
