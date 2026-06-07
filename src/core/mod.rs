@@ -1,8 +1,3 @@
-//! # Shredding Orchestration Layer
-//!
-//! This module coordinates the various components of the shredding engine
-//! to provide a high-level API for secure file erasure.
-
 pub mod metadata;
 pub mod overwrite;
 pub mod unlink;
@@ -16,6 +11,8 @@ use overwrite::Overwriter;
 use rayon::prelude::*;
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use unlink::Unlinker;
 use walkdir::WalkDir;
 
@@ -27,6 +24,7 @@ pub struct Shredder {
     verify: bool,
     exclude: GlobSet,
     progress: Option<ProgressReporter>,
+    cancelled: Arc<AtomicBool>,
 }
 
 impl Shredder {
@@ -65,7 +63,17 @@ impl Shredder {
             } else {
                 None
             },
+            cancelled: Arc::new(AtomicBool::new(false)),
         })
+    }
+
+    /// Signals the shredder to stop current operations as soon as possible.
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::SeqCst);
+    }
+
+    fn is_cancelled(&self) -> bool {
+        self.cancelled.load(Ordering::Relaxed)
     }
 
     fn should_exclude(&self, path: &Path) -> bool {
@@ -73,6 +81,10 @@ impl Shredder {
     }
 
     fn shred_file(&self, path: &Path, keep: bool) -> ShredResult<()> {
+        if self.is_cancelled() {
+            return Ok(());
+        }
+
         if self.should_exclude(path) {
             if self.dry_run {
                 println!("\x1b[33m[SKIP]\x1b[0m (Excluded): {:?}", path);
@@ -87,7 +99,7 @@ impl Shredder {
 
         let mut file = OpenOptions::new().read(true).write(true).open(path)?;
 
-        let mut overwriter = Overwriter::new(&mut file, self.verify);
+        let mut overwriter = Overwriter::new(&mut file, self.verify, Arc::clone(&self.cancelled));
         overwriter.execute(self.method.clone(), self.passes)?;
 
         drop(file);
@@ -132,6 +144,9 @@ impl Shredder {
 
             let mut entries = Vec::new();
             for entry in WalkDir::new(path) {
+                if self.is_cancelled() {
+                    break;
+                }
                 match entry {
                     Ok(e) => entries.push(e.into_path()),
                     Err(e) => {
@@ -143,6 +158,10 @@ impl Shredder {
                 }
             }
 
+            if self.is_cancelled() {
+                return Ok(());
+            }
+
             let files: Vec<PathBuf> = entries.iter().filter(|p| p.is_file()).cloned().collect();
 
             if let Some(ref pr) = self.progress {
@@ -150,14 +169,20 @@ impl Shredder {
             }
 
             // Parallel file shredding
-            files
-                .par_iter()
-                .try_for_each(|f| self.shred_file(f, keep))?;
+            files.par_iter().try_for_each(|f| {
+                if self.is_cancelled() {
+                    return Ok(());
+                }
+                self.shred_file(f, keep)
+            })?;
 
-            if !keep && !self.dry_run {
+            if !keep && !self.dry_run && !self.is_cancelled() {
                 let mut dirs: Vec<_> = entries.iter().filter(|p| p.is_dir()).collect();
                 dirs.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
                 for dir in dirs {
+                    if self.is_cancelled() {
+                        break;
+                    }
                     if dir.exists() {
                         // We ignore errors during directory removal (e.g. if a directory
                         // is not empty due to exclusions).

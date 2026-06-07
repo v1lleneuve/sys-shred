@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2026-06-07
+
+### Added
+- **Graceful Interruption**: Implemented signal handling (Ctrl+C) via `ctrlc` crate. The tool now catches interruption signals and cancels ongoing operations safely without leaving the terminal in an inconsistent state.
+- **Cancellation-Aware Engine**: Refactored the core shredding engine and overwriting loops to respond immediately to cancellation signals, ensuring data destruction stops as soon as requested.
+
+### Changed
+- Improved robustness of the parallel traversal engine during high-load "chaos" scenarios.
+
 ## [0.3.0] - 2026-06-07
 
 ### Added

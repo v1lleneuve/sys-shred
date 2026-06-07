@@ -6,9 +6,13 @@
 
 #![deny(missing_docs)]
 
+/// Command-line argument definitions and parsing.
 pub mod cli;
+/// The core shredding engine and file-system interaction logic.
 pub mod core;
+/// Error handling taxonomy and result types.
 pub mod error;
+/// Terminal User Interface and progress reporting.
 pub mod ui;
 
 #[cfg(test)]
