@@ -8,11 +8,13 @@ A high-integrity, multi-threaded command-line utility for secure file erasure an
 
 ## Overview
 
-`sys-shred` (v0.3.0) is a forensic-grade tool designed to irreversibly destroy file data by bypassing standard operating system caching mechanisms and utilizing parallel processing. It ensures that data is physically committed to the storage medium across multiple cryptographic passes, metadata is obfuscated, and the file entry is securely unlinked from the filesystem.
+`sys-shred` (v0.4.0) is a forensic-grade tool designed to irreversibly destroy file data by bypassing standard operating system caching mechanisms and utilizing parallel processing. It ensures that data is physically committed to the storage medium across multiple cryptographic passes, metadata is obfuscated, and the file entry is securely unlinked from the filesystem.
 
 ## Features
 
 - **High-Performance Parallelism**: Powered by `rayon`, recursive operations utilize all available CPU cores for maximum throughput.
+- **Forensic Audit Logging**: Generate verifiable destruction reports (`--audit-log`) in JSON or Text formats.
+- **SSD TRIM/Discard Support**: Integrated hardware-level block deallocation (`--trim`) for enhanced anti-forensics on Flash media.
 - **Industry Standard Algorithms**: Support for US DoD 5220.22-M, Gutmann (35-pass), and Zero-fill erasure methods.
 - **Hardware-Level Verification**: Optional read-back verification (`--verify`) to confirm data persistence on the physical medium.
 - **Dry-Run Mode**: Safely preview destruction sequences (`--dry-run`) before execution.
@@ -61,6 +63,16 @@ sys-shred ./sensitive_folder --recursive --verify
 **Dry-run with exclusions:**
 ```bash
 sys-shred ./project --recursive --dry-run --exclude "*.git/*"
+```
+
+**Generate a JSON audit report for compliance:**
+```bash
+sys-shred ./sensitive_docs --audit-log report.json --audit-format json
+```
+
+**Secure erasure with SSD TRIM optimization:**
+```bash
+sys-shred ./ssd_target --trim --verify
 ```
 
 **Overwriting without final deletion:**

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-06-07
+
+### Added
+- **Professional Audit Logging**: Introduced a high-integrity forensic reporting system. Users can now generate detailed session reports using `--audit-log <PATH>`.
+- **SSD TRIM/Discard Support**: Added `--trim` flag to send hardware-level deallocation commands (Linux/Windows), significantly improving anti-forensic reliability on Flash-based media.
+- **Flexible Log Formats**: Support for both human-readable `Text` and machine-readable `JSON` audit logs via the `--audit-format` flag.
+- **Detailed Event Tracking**: Reports capture per-file results including timestamps, methods used, and specific error messages for failed operations.
+
+### Changed
+- Refactored core orchestration to collect and summarize destruction events across parallel threads.
+
 ## [0.3.1] - 2026-06-07
 
 ### Added

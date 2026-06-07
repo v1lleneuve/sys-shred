@@ -1,6 +1,6 @@
 [package]
 name = "sys-shred"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 authors = ["V1lleneuve <v1lleneuve@proton.me>"]
 description = "A professional, secure file erasure (anti-forensics) CLI tool."
@@ -18,3 +18,8 @@ walkdir = "2.4"
 rayon = "1.8"
 globset = "0.4"
 ctrlc = "3.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+libc = "0.2"
+windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO"] }

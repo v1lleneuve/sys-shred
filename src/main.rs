@@ -23,6 +23,7 @@ fn main() {
         args.passes,
         args.dry_run,
         args.verify,
+        args.trim,
         &args.exclude,
         !args.verbose,
     ) {
@@ -43,10 +44,25 @@ fn main() {
     }
 
     // 5. Execute the shredding lifecycle
-    if let Err(e) = shredder.shred(&args.path, args.recursive, args.keep) {
+    let shred_res = shredder.shred(&args.path, args.recursive, args.keep);
+
+    // 6. Generate and save Audit Report if requested
+    if let Some(log_path) = args.audit_log {
+        let report = shredder.generate_report();
+        if let Err(e) = report.save(&log_path, args.audit_format) {
+            eprintln!("\x1b[33m[WARN]\x1b[0m Failed to save audit log: {}", e);
+        } else {
+            println!(
+                "\x1b[34m[INFO]\x1b[0m Forensic audit log generated at: {:?}",
+                log_path
+            );
+        }
+    }
+
+    if let Err(e) = shred_res {
         eprintln!("\n\x1b[31m[CRITICAL ERROR]\x1b[0m {}", e);
         process::exit(1);
     }
 
-    println!("\x1b[32m[SUCCESS]\x1b[0m File destroyed beyond recovery.");
+    println!("\x1b[32m[SUCCESS]\x1b[0m File destruction sequence finalized.");
 }

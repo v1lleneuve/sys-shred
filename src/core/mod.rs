@@ -1,18 +1,21 @@
 pub mod metadata;
 pub mod overwrite;
+pub mod report;
 pub mod unlink;
 
 use crate::cli::args::ShredMethod;
 use crate::error::{ShredError, ShredResult};
 use crate::ui::ProgressReporter;
+use chrono::Utc;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use metadata::MetadataHandler;
 use overwrite::Overwriter;
 use rayon::prelude::*;
+use report::{ShredEvent, ShredReport};
 use std::fs::{self, OpenOptions};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use unlink::Unlinker;
 use walkdir::WalkDir;
 
@@ -22,9 +25,11 @@ pub struct Shredder {
     passes: u32,
     dry_run: bool,
     verify: bool,
+    trim: bool,
     exclude: GlobSet,
     progress: Option<ProgressReporter>,
     cancelled: Arc<AtomicBool>,
+    events: Arc<Mutex<Vec<ShredEvent>>>,
 }
 
 impl Shredder {
@@ -35,6 +40,7 @@ impl Shredder {
     /// * `passes` - Number of overwrite passes (if applicable to the method).
     /// * `dry_run` - If true, no I/O operations will be performed.
     /// * `verify` - If true, data is read back after each pass to verify destruction.
+    /// * `trim` - If true, sends a TRIM command to the SSD after shredding.
     /// * `exclude_patterns` - Glob patterns for files to skip.
     /// * `show_progress` - Whether to display a terminal progress bar.
     pub fn new(
@@ -42,6 +48,7 @@ impl Shredder {
         passes: u32,
         dry_run: bool,
         verify: bool,
+        trim: bool,
         exclude_patterns: &[String],
         show_progress: bool,
     ) -> ShredResult<Self> {
@@ -55,6 +62,7 @@ impl Shredder {
             passes,
             dry_run,
             verify,
+            trim,
             exclude: builder
                 .build()
                 .map_err(|e| ShredError::Cli(e.to_string()))?,
@@ -64,6 +72,7 @@ impl Shredder {
                 None
             },
             cancelled: Arc::new(AtomicBool::new(false)),
+            events: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -74,6 +83,18 @@ impl Shredder {
 
     fn is_cancelled(&self) -> bool {
         self.cancelled.load(Ordering::Relaxed)
+    }
+
+    /// Returns the accumulated audit report.
+    pub fn generate_report(&self) -> ShredReport {
+        let events = self.events.lock().unwrap().clone();
+        ShredReport::new(events)
+    }
+
+    fn record_event(&self, event: ShredEvent) {
+        if let Ok(mut events) = self.events.lock() {
+            events.push(event);
+        }
     }
 
     fn should_exclude(&self, path: &Path) -> bool {
@@ -94,28 +115,54 @@ impl Shredder {
 
         if self.dry_run {
             println!("\x1b[32m[DRY-RUN]\x1b[0m Would shred: {:?}", path);
+            self.record_event(ShredEvent {
+                path: path.to_path_buf(),
+                timestamp: Utc::now(),
+                method: self.method.clone(),
+                success: true,
+                error: None,
+            });
             return Ok(());
         }
 
-        let mut file = OpenOptions::new().read(true).write(true).open(path)?;
+        let res = (|| -> ShredResult<()> {
+            let mut file = OpenOptions::new().read(true).write(true).open(path)?;
 
-        let mut overwriter = Overwriter::new(&mut file, self.verify, Arc::clone(&self.cancelled));
-        overwriter.execute(self.method.clone(), self.passes)?;
+            let mut overwriter =
+                Overwriter::new(&mut file, self.verify, Arc::clone(&self.cancelled));
+            overwriter.execute(self.method.clone(), self.passes)?;
 
-        drop(file);
+            drop(file);
 
-        let obfuscated_path = MetadataHandler::obfuscate_filename(path)?;
-        MetadataHandler::truncate(&obfuscated_path)?;
+            let obfuscated_path = MetadataHandler::obfuscate_filename(path)?;
 
-        if !keep {
-            Unlinker::unlink(&obfuscated_path)?;
+            if self.trim {
+                let _ = MetadataHandler::trim(&obfuscated_path);
+            }
+
+            MetadataHandler::truncate(&obfuscated_path)?;
+
+            if !keep {
+                Unlinker::unlink(&obfuscated_path)?;
+            }
+            Ok(())
+        })();
+
+        self.record_event(ShredEvent {
+            path: path.to_path_buf(),
+            timestamp: Utc::now(),
+            method: self.method.clone(),
+            success: res.is_ok(),
+            error: res.as_ref().err().map(|e| e.to_string()),
+        });
+
+        if res.is_ok() {
+            if let Some(ref pr) = self.progress {
+                pr.inc_file_complete();
+            }
         }
 
-        if let Some(ref pr) = self.progress {
-            pr.inc_file_complete();
-        }
-
-        Ok(())
+        res
     }
 
     /// Entry point for the shredding operation.

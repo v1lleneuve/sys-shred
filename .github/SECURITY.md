@@ -6,15 +6,16 @@ The following versions of sys-shred are currently supported with security update
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.3.x   | :white_check_mark: |
-| 0.2.x   | :warning: Legacy   |
-| 0.1.x   | :x: End of Life    |
+| 0.4.x   | :white_check_mark: |
+| 0.3.x   | :warning: Legacy   |
+| < 0.3.x | :x: End of Life    |
 
 ## Security Model (v0.3.0+)
 
 `sys-shred` employs a multi-layered anti-forensic approach:
 - **Entropy Source**: Uses `rand::rngs::StdRng` for cryptographically secure random data generation.
 - **Hardware Sync**: Enforces `sync_all()` (equivalent to `fsync` or `FlushFileBuffers`) to bypass OS and disk controller write caches.
+- **SSD TRIM/Discard**: Optional hardware-level deallocation to mitigate "wear-leveling" data persistence on Flash-based media.
 - **Read-back Verification**: Optional hardware-level confirmation that data was physically committed to the medium.
 - **Metadata Scrubbing**: Path randomization and file truncation are performed to clear filesystem-level artifacts.
 

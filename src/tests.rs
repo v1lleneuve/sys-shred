@@ -3,11 +3,43 @@
 //! Contains integration tests to ensure the functional integrity of the
 //! shredding lifecycle under various scenarios.
 
-use crate::cli::args::ShredMethod;
+use crate::cli::args::{AuditFormat, ShredMethod};
 use crate::core::Shredder;
 use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
+
+#[test]
+fn test_audit_logging() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("audit_target.txt");
+    let log_path = dir.path().join("audit.json");
+
+    {
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"AUDIT ME").unwrap();
+    }
+
+    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, false, &[], false).unwrap();
+    shredder.shred(&file_path, false, false).unwrap();
+
+    let report = shredder.generate_report();
+    report
+        .save(&log_path, AuditFormat::Json)
+        .expect("Failed to save audit log");
+
+    assert!(log_path.exists(), "Audit log file was not created");
+
+    let content = std::fs::read_to_string(&log_path).unwrap();
+    assert!(
+        content.contains("audit_target.txt"),
+        "Audit log does not contain the file path"
+    );
+    assert!(
+        content.contains("\"success\": true"),
+        "Audit log does not record success correctly"
+    );
+}
 
 /// Verifies that a standard shredding operation successfully destroys the file
 /// and unlinks it from the filesystem.
@@ -24,7 +56,7 @@ fn test_standard_shredding_lifecycle() {
     }
 
     // Initialize shredder with 1 pass for speed in tests
-    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, &[], false).unwrap();
+    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, false, &[], false).unwrap();
 
     // Execute shredding (non-recursive)
     shredder
@@ -47,7 +79,7 @@ fn test_dry_run_mode() {
         file.write_all(b"STAY ALIVE").unwrap();
     }
 
-    let shredder = Shredder::new(ShredMethod::Random, 1, true, false, &[], false).unwrap();
+    let shredder = Shredder::new(ShredMethod::Random, 1, true, false, false, &[], false).unwrap();
     shredder.shred(&file_path, false, false).unwrap();
 
     // In dry-run, the file MUST still exist
@@ -66,6 +98,7 @@ fn test_exclude_patterns() {
     let shredder = Shredder::new(
         ShredMethod::Random,
         1,
+        false,
         false,
         false,
         &["*.log".to_string()],

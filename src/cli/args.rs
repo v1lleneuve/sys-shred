@@ -8,7 +8,7 @@ use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
 /// Standard algorithms for secure data erasure.
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, serde::Serialize)]
 pub enum ShredMethod {
     /// Overwrite with zero bytes (Fastest).
     Zero,
@@ -20,6 +20,16 @@ pub enum ShredMethod {
     Gutmann,
 }
 
+/// Output formats for the audit log.
+#[derive(ValueEnum, Clone, Debug, Default)]
+pub enum AuditFormat {
+    /// Human-readable text format.
+    #[default]
+    Text,
+    /// Machine-readable JSON format.
+    Json,
+}
+
 /// Secure File Erasure Utility (Anti-Forensics)
 ///
 /// `sys-shred` is a specialized tool designed to irreversibly destroy file data.
@@ -29,7 +39,7 @@ pub enum ShredMethod {
 #[derive(Parser, Debug)]
 #[command(
     author = "V1lleneuve",
-    version = "0.3.0",
+    version = "0.4.0",
     about = "Securely shreds files using cryptographic data and metadata obfuscation",
     long_about = "A high-integrity secure deletion tool that bypasses OS file-system caching to ensure hardware-level data destruction."
 )]
@@ -86,6 +96,30 @@ pub struct Args {
         help = "Exclude files matching patterns (e.g. *.log, secret/*)"
     )]
     pub exclude: Vec<String>,
+
+    /// Inform the SSD to discard the blocks used by the file (TRIM).
+    #[arg(
+        long,
+        help = "Send a TRIM/Discard command to the SSD after shredding (Linux/Windows only)"
+    )]
+    pub trim: bool,
+
+    /// Path to save the forensic audit log.
+    #[arg(
+        long,
+        value_name = "LOG_PATH",
+        help = "Path to generate a forensic audit report"
+    )]
+    pub audit_log: Option<PathBuf>,
+
+    /// Format of the forensic audit log.
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = AuditFormat::Text,
+        help = "Format of the audit report (text or json)"
+    )]
+    pub audit_format: AuditFormat,
 
     /// Enable verbose logging for granular visibility into the shredding process.
     #[arg(short, long, help = "Enable detailed debug output")]
