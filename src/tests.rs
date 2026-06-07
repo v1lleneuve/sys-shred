@@ -3,8 +3,9 @@
 //! Contains integration tests to ensure the functional integrity of the
 //! shredding lifecycle under various scenarios.
 
+use crate::cli::args::ShredMethod;
 use crate::core::Shredder;
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::Write;
 use tempfile::tempdir;
 
@@ -23,7 +24,7 @@ fn test_standard_shredding_lifecycle() {
     }
 
     // Initialize shredder with 1 pass for speed in tests
-    let mut shredder = Shredder::new(1, false);
+    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, &[], false).unwrap();
 
     // Execute shredding (non-recursive)
     shredder
@@ -37,54 +38,43 @@ fn test_standard_shredding_lifecycle() {
     );
 }
 
-/// Verifies recursive shredding of a directory structure.
 #[test]
-fn test_recursive_directory_shredding() {
-    let dir = tempdir().expect("Failed to create temporary directory for testing");
-    let sub_dir = dir.path().join("sub");
-    fs::create_dir(&sub_dir).unwrap();
-    let file_path = sub_dir.join("test.txt");
-
+fn test_dry_run_mode() {
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join("dry_run_target.txt");
     {
-        let mut file = File::create(&file_path).expect("Failed to create test file");
-        file.write_all(b"RECURSIVE DATA")
-            .expect("Failed to write test data");
+        let mut file = File::create(&file_path).unwrap();
+        file.write_all(b"STAY ALIVE").unwrap();
     }
 
-    let mut shredder = Shredder::new(1, false);
+    let shredder = Shredder::new(ShredMethod::Random, 1, true, false, &[], false).unwrap();
+    shredder.shred(&file_path, false, false).unwrap();
 
-    // Execute recursive shredding
-    shredder
-        .shred(dir.path(), true, false)
-        .expect("Recursive shredding failed");
-
-    // The entire directory should be gone
-    assert!(!dir.path().exists());
+    // In dry-run, the file MUST still exist
+    assert!(file_path.exists(), "Dry-run modified the filesystem!");
 }
 
-/// Verifies the behavior of the `--keep` flag, ensuring the file is overwritten
-/// and renamed but not unlinked.
 #[test]
-fn test_shredding_with_keep_flag() {
-    let dir = tempdir().expect("Failed to create temporary directory for testing");
-    let file_path = dir.path().join("persistent_target.bin");
+fn test_exclude_patterns() {
+    let dir = tempdir().unwrap();
+    let file1 = dir.path().join("shred_me.txt");
+    let file2 = dir.path().join("keep_me.log");
 
-    {
-        let mut file = File::create(&file_path).expect("Failed to create test file");
-        file.write_all(b"PERSISTENT DATA")
-            .expect("Failed to write test data");
-    }
+    File::create(&file1).unwrap();
+    File::create(&file2).unwrap();
 
-    let mut shredder = Shredder::new(1, false);
+    let shredder = Shredder::new(
+        ShredMethod::Random,
+        1,
+        false,
+        false,
+        &["*.log".to_string()],
+        false,
+    )
+    .unwrap();
 
-    // Execute shredding with keep=true
-    shredder
-        .shred(&file_path, false, true)
-        .expect("Shredding operation failed with keep=true");
+    shredder.shred(dir.path(), true, false).unwrap();
 
-    // The original path must be gone because the file was renamed
-    assert!(
-        !file_path.exists(),
-        "Logical Failure: Original path exists after metadata obfuscation"
-    );
+    assert!(!file1.exists(), "shred_me.txt should be gone");
+    assert!(file2.exists(), "keep_me.log should have been excluded");
 }

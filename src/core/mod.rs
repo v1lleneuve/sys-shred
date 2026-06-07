@@ -7,66 +7,90 @@ pub mod metadata;
 pub mod overwrite;
 pub mod unlink;
 
+use crate::cli::args::ShredMethod;
 use crate::error::{ShredError, ShredResult};
 use crate::ui::ProgressReporter;
+use globset::{Glob, GlobSet, GlobSetBuilder};
 use metadata::MetadataHandler;
 use overwrite::Overwriter;
+use rayon::prelude::*;
 use std::fs::{self, OpenOptions};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use unlink::Unlinker;
 use walkdir::WalkDir;
 
 /// The primary coordinator for the file destruction lifecycle.
-///
-/// The `Shredder` manages the sequence of operations required to securely
-/// erase files and directories.
 pub struct Shredder {
-    /// Total number of cryptographic overwrite passes to execute.
+    method: ShredMethod,
     passes: u32,
-    /// Optional progress reporting component for interactive feedback.
+    dry_run: bool,
+    verify: bool,
+    exclude: GlobSet,
     progress: Option<ProgressReporter>,
 }
 
 impl Shredder {
-    /// Initializes a new `Shredder` with the specified configuration.
+    /// Initializes a new `Shredder` with the specified destruction policy.
     ///
     /// # Arguments
-    ///
-    /// * `passes` - How many times to overwrite the data.
-    /// * `show_progress` - Whether to initialize the terminal progress bar.
-    pub fn new(passes: u32, show_progress: bool) -> Self {
-        Self {
+    /// * `method` - The erasure algorithm to utilize.
+    /// * `passes` - Number of overwrite passes (if applicable to the method).
+    /// * `dry_run` - If true, no I/O operations will be performed.
+    /// * `verify` - If true, data is read back after each pass to verify destruction.
+    /// * `exclude_patterns` - Glob patterns for files to skip.
+    /// * `show_progress` - Whether to display a terminal progress bar.
+    pub fn new(
+        method: ShredMethod,
+        passes: u32,
+        dry_run: bool,
+        verify: bool,
+        exclude_patterns: &[String],
+        show_progress: bool,
+    ) -> ShredResult<Self> {
+        let mut builder = GlobSetBuilder::new();
+        for pattern in exclude_patterns {
+            builder.add(Glob::new(pattern).map_err(|e| ShredError::Cli(e.to_string()))?);
+        }
+
+        Ok(Self {
+            method,
             passes,
+            dry_run,
+            verify,
+            exclude: builder
+                .build()
+                .map_err(|e| ShredError::Cli(e.to_string()))?,
             progress: if show_progress {
                 Some(ProgressReporter::new())
             } else {
                 None
             },
-        }
+        })
     }
 
-    /// Securely destroys a single file.
-    fn shred_file(&mut self, path: &Path, keep: bool) -> ShredResult<()> {
+    fn should_exclude(&self, path: &Path) -> bool {
+        self.exclude.is_match(path)
+    }
+
+    fn shred_file(&self, path: &Path, keep: bool) -> ShredResult<()> {
+        if self.should_exclude(path) {
+            if self.dry_run {
+                println!("\x1b[33m[SKIP]\x1b[0m (Excluded): {:?}", path);
+            }
+            return Ok(());
+        }
+
+        if self.dry_run {
+            println!("\x1b[32m[DRY-RUN]\x1b[0m Would shred: {:?}", path);
+            return Ok(());
+        }
+
         let mut file = OpenOptions::new().read(true).write(true).open(path)?;
 
-        if let Some(ref pr) = self.progress {
-            pr.start_overwrite(self.passes);
-        }
-
-        let mut overwriter = Overwriter::new(&mut file);
-        for i in 0..self.passes {
-            overwriter.run_pass()?;
-            if let Some(ref pr) = self.progress {
-                pr.inc_overwrite(1, format!("Pass {}/{}", i + 1, self.passes));
-            }
-        }
+        let mut overwriter = Overwriter::new(&mut file, self.verify);
+        overwriter.execute(self.method.clone(), self.passes)?;
 
         drop(file);
-
-        if let Some(ref pr) = self.progress {
-            pr.finish_overwrite();
-            pr.start_metadata();
-        }
 
         let obfuscated_path = MetadataHandler::obfuscate_filename(path)?;
         MetadataHandler::truncate(&obfuscated_path)?;
@@ -76,20 +100,16 @@ impl Shredder {
         }
 
         if let Some(ref pr) = self.progress {
-            pr.finish_metadata();
+            pr.inc_file_complete();
         }
 
         Ok(())
     }
 
-    /// Securely shreds a file or a directory (if recursive is enabled).
+    /// Entry point for the shredding operation.
     ///
-    /// # Arguments
-    ///
-    /// * `path` - Path to the file or directory to be destroyed.
-    /// * `recursive` - Whether to destroy directory contents.
-    /// * `keep` - If `true`, skips the final `unlink` step for files.
-    pub fn shred(&mut self, path: &Path, recursive: bool, keep: bool) -> ShredResult<()> {
+    /// Handles both individual files and recursive directory traversal.
+    pub fn shred(&self, path: &Path, recursive: bool, keep: bool) -> ShredResult<()> {
         if !path.exists() {
             return Err(ShredError::InvalidPath(format!(
                 "Path does not exist: {:?}",
@@ -98,6 +118,9 @@ impl Shredder {
         }
 
         if path.is_file() {
+            if let Some(ref pr) = self.progress {
+                pr.start_files(1);
+            }
             self.shred_file(path, keep)
         } else if path.is_dir() {
             if !recursive {
@@ -107,7 +130,6 @@ impl Shredder {
                 )));
             }
 
-            // Collect all entries and handle potential traversal errors
             let mut entries = Vec::new();
             for entry in WalkDir::new(path) {
                 match entry {
@@ -121,20 +143,32 @@ impl Shredder {
                 }
             }
 
-            // Shred files first
-            for entry in entries.iter().filter(|p| p.is_file()) {
-                self.shred_file(entry, keep)?;
+            let files: Vec<PathBuf> = entries.iter().filter(|p| p.is_file()).cloned().collect();
+
+            if let Some(ref pr) = self.progress {
+                pr.start_files(files.len() as u64);
             }
 
-            // Finally, remove the directories (bottom-up)
-            if !keep {
+            // Parallel file shredding
+            files
+                .par_iter()
+                .try_for_each(|f| self.shred_file(f, keep))?;
+
+            if !keep && !self.dry_run {
                 let mut dirs: Vec<_> = entries.iter().filter(|p| p.is_dir()).collect();
                 dirs.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
                 for dir in dirs {
                     if dir.exists() {
-                        fs::remove_dir(dir)?;
+                        // We ignore errors during directory removal (e.g. if a directory
+                        // is not empty due to exclusions).
+                        let _ = fs::remove_dir(dir);
                     }
                 }
+            } else if self.dry_run {
+                println!(
+                    "\x1b[32m[DRY-RUN]\x1b[0m Would remove directories in: {:?}",
+                    path
+                );
             }
             Ok(())
         } else {

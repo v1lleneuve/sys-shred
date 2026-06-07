@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-06-07
+
+### Added
+- **Multi-threaded Destruction**: Integrated `rayon` for parallel file shredding, significantly improving performance on multi-core systems.
+- **Industry Standard Algorithms**: Added support for Zero-fill, US DoD 5220.22-M, and Gutmann (35-pass) erasure methods.
+- **Dry-Run Mode**: Introduced `--dry-run` to simulate destruction sequences without modifying the filesystem.
+- **Read-back Verification**: Added `--verify` flag to ensure hardware-level data persistence by reading back and comparing written buffers.
+- **Glob Exclusions**: Added `--exclude` support for skipping specific files or directories using pattern matching.
+
+### Changed
+- Refactored UI to provide a cleaner aggregate progress view for parallel operations.
+- Updated core engine to be thread-safe.
+- Overhauled project documentation (README.md) to reflect new v0.3.0 capabilities and forensic standards.
+
 ## [0.2.1] - 2026-06-06
 
 ### Fixed

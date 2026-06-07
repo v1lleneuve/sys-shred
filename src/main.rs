@@ -17,11 +17,22 @@ fn main() {
     let args = Args::parse();
 
     // 3. Initialize the destruction engine
-    // We enable progress reporting for the CLI application by default.
-    let mut shredder = Shredder::new(args.passes, true);
+    let shredder = match Shredder::new(
+        args.method,
+        args.passes,
+        args.dry_run,
+        args.verify,
+        &args.exclude,
+        !args.verbose,
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("\x1b[31m[ERROR]\x1b[0m Configuration failed: {}", e);
+            process::exit(1);
+        }
+    };
 
     // 4. Execute the shredding lifecycle
-    // All errors are propagated and handled through a professional exit sequence.
     if let Err(e) = shredder.shred(&args.path, args.recursive, args.keep) {
         eprintln!("\n\x1b[31m[CRITICAL ERROR]\x1b[0m {}", e);
         process::exit(1);

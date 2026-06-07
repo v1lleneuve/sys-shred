@@ -6,65 +6,40 @@
 use indicatif::{ProgressBar, ProgressStyle};
 
 /// A high-level reporter for managing terminal progress visuals.
-///
-/// Encapsulates the configuration and state of the `indicatif` progress bars.
 pub struct ProgressReporter {
     /// The primary progress bar handle.
-    multi_bar: ProgressBar,
+    bar: ProgressBar,
 }
 
 impl ProgressReporter {
     /// Creates a new `ProgressReporter` instance.
     pub fn new() -> Self {
-        Self {
-            multi_bar: ProgressBar::new_spinner(),
-        }
-    }
-
-    /// Configures and activates the overwrite progress bar.
-    ///
-    /// # Arguments
-    ///
-    /// * `passes` - The total number of passes to display in the progress bar.
-    pub fn start_overwrite(&self, passes: u32) {
-        self.multi_bar.set_length(passes as u64);
-
+        let bar = ProgressBar::new(0);
         let style = ProgressStyle::default_bar()
             .template(
-                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} ({msg})",
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} files ({msg})",
             )
             .unwrap_or_else(|_| ProgressStyle::default_bar());
+        bar.set_style(style.progress_chars("#>-"));
 
-        self.multi_bar.set_style(style.progress_chars("#>-"));
-        self.multi_bar
-            .set_message("Initializing high-integrity overwrite...");
+        Self { bar }
     }
 
-    /// Updates the progress bar with a new increment and message.
-    ///
-    /// # Arguments
-    ///
-    /// * `amount` - Increment value.
-    /// * `message` - The text message to display alongside the bar.
-    pub fn inc_overwrite(&self, amount: u64, message: String) {
-        self.multi_bar.inc(amount);
-        self.multi_bar.set_message(message);
+    /// Initializes the progress bar with the total number of files.
+    pub fn start_files(&self, total: u64) {
+        self.bar.set_length(total);
+        self.bar.set_message("Shredding in progress...");
     }
 
-    /// Marks the overwriting phase as complete and cleans up the UI.
-    pub fn finish_overwrite(&self) {
-        self.multi_bar
-            .finish_with_message("Data destruction sequence complete.");
+    /// Increments the count of completed files.
+    pub fn inc_file_complete(&self) {
+        self.bar.inc(1);
     }
 
-    /// Signals the start of the metadata obfuscation phase.
-    pub fn start_metadata(&self) {
-        println!("\x1b[34m[INFO]\x1b[0m Scrubbing metadata and performing path randomization...");
-    }
-
-    /// Signals the successful completion of the metadata phase.
-    pub fn finish_metadata(&self) {
-        println!("\x1b[34m[INFO]\x1b[0m Forensic cleanup and final unlinking complete.");
+    /// Finalizes the progress reporting.
+    pub fn finish(&self) {
+        self.bar
+            .finish_with_message("All targets securely destroyed.");
     }
 }
 
