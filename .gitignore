@@ -14,9 +14,6 @@
 *.pem
 *.key
 
-# Release Notes (Local scratchpad)
-RELEASE_NOTES.md
-
 # Testing
 # Ignore any local test files generated during manual testing
 test_*.txt

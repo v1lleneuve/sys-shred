@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.0.0] - 2026-06-07
+## [1.0.0] - 2026-06-08
 
 ### Added
 - **Official crates.io Release**: `sys-shred` is now officially available on crates.io and can be installed globally via `cargo install sys-shred`.
