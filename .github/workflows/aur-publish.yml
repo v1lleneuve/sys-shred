@@ -1,0 +1,44 @@
+name: Publish to AUR
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  aur-publish:
+    name: Build & Push to AUR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Extract version from Tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Update PKGBUILD Version & Reset Release Number
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.get_version.outputs.VERSION }}/" dist/aur/PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" dist/aur/PKGBUILD
+
+      - name: Calculate new SHA256 Checksum
+        run: |
+          # Unduh tarball rilis dari GitHub
+          curl -sL -o source.tar.gz "https://github.com/${{ github.repository }}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          # Hitung checksum
+          SUM=$(sha256sum source.tar.gz | awk '{print $1}')
+          # Masukkan checksum baru ke dalam PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('$SUM')/" dist/aur/PKGBUILD
+
+      - name: Publish to Arch User Repository
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: sys-shred
+          pkgbuild: dist/aur/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "chore: update to ${{ github.ref_name }} via GitHub Actions"
+          force_push: true
+          
