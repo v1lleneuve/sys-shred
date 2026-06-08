@@ -1,155 +1,162 @@
-<div align="center">
+# sys-shred
 
-# 🛡️ sys-shred
+sys-shred is a multi-threaded, forensic-grade Rust library and CLI for the irreversible destruction of sensitive file data.
 
-**Forensic-Grade Data Sanitization & Anti-Forensics Utility**
+> [!CAUTION]
+> NOTICE OF IRREVERSIBLE DATA DESTRUCTION.
+>
+> Data processed by `sys-shred` is physically overwritten at the hardware level.
+>
+> Please verify your target paths carefully before executing recursive commands. Data cannot be recovered by forensic software once processed.
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=flat-square)](https://github.com/v1lleneuve/sys-shred)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg?style=flat-square)](https://www.rust-lang.org)
-[![Status: Production Stable](https://img.shields.io/badge/status-production_stable-brightgreen.svg?style=flat-square)](#)
+# Disclaimer
 
-*A high-performance, multi-threaded Rust engine engineered for the irreversible destruction of sensitive file data.*
+This project is not affiliated, associated, authorized, endorsed by, or in any way officially connected with any government or military entity.
 
-</div>
+The maintainers of sys-shred provide this tool for legitimate data sanitization, privacy protection, and compliance purposes. The maintainers call upon the personal responsibility of its users to use this application in a fair and legal way. Use at your own discretion. Do not use this tool on systems where you do not have explicit authorization to destroy data. We discourage any malicious or unauthorized usage.
 
----
+## Why sys-shred?
 
-> [!CAUTION]  
-> **Irreversible Operation**  
-> Data processed by `sys-shred` is physically overwritten at the hardware level and **cannot be recovered** by any known forensic software or hardware analysis. Use this utility with extreme caution, particularly when employing recursive targeting.
+- sys-shred does not rely on simple unlinking; it interfaces directly with the hardware using **Hardware-level Synchronization** (`fsync`/`sync_all`) to bypass volatile OS write-behind caches.
+- Running a stream-based architecture saves massive amounts of RAM when processing directories containing millions of files.
+- sys-shred supports interacting with modern SSDs via hardware TRIM commands to mitigate wear-leveling artifacts.
+- Thank you to the Rust community for the `rayon` crate which powers the massive parallel execution of this tool.
 
-## 📖 Overview
+> [!IMPORTANT]
+> This is the official repository for sys-shred.
+> **File bug reports and feature requests via [GitHub Issues](https://github.com/v1lleneuve/sys-shred/issues)**
 
-`sys-shred` is an enterprise-ready command-line utility designed to provide absolute certainty in data destruction. Moving beyond simple unlinking, `sys-shred` bypasses standard operating system caching mechanisms to ensure that data is physically committed to the storage medium. It employs multiple cryptographic passes, scrubs metadata footprints, mitigates Flash/SSD wear-leveling artifacts via TRIM, and provides verifiable compliance through detailed audit logging.
+## Example
 
-Built with Rust and powered by a highly optimized, lock-free parallel execution engine, it handles millions of files with a near-zero memory footprint.
+Do check out the CLI help menu (`sys-shred --help`) to see an exhaustive list of configuration options.
+The command below covers the most common use case for rapid, secure erasure.
 
-## ✨ Core Capabilities
-
-### ⚡ Uncompromising Performance
-- **Massive Parallelism**: Powered by a `rayon`-backed work-stealing thread pool, recursive directory destruction utilizes all available CPU cores, delivering up to 10x throughput scaling on modern hardware.
-- **Stream-Based Architecture**: Iterates file systems lazily, completely eliminating RAM bloat regardless of directory size or depth.
-
-### 🔐 Forensic Reliability
-- **Industry Standard Algorithms**: Natively supports internationally recognized erasure standards:
-  - `zero`: Single-pass zero-fill for rapid sanitization.
-  - `random`: (Default) High-entropy cryptographic overwrite using `StdRng`.
-  - `dod`: US Department of Defense 5220.22-M standard (3 passes).
-  - `gutmann`: The rigorous Peter Gutmann method (35 passes) for legacy magnetic media.
-- **Hardware-Level Sync**: Enforces strict `sync_all` (`fsync`/`FlushFileBuffers`) calls after every single write pass, bypassing volatile OS write-behind caches to guarantee physical platter/cell modification.
-- **SSD TRIM/Discard Support**: Mitigates "wear-leveling" data shadows on Flash-based media by dispatching hardware-level block deallocation commands (`FALLOC_FL_PUNCH_HOLE` on Linux, `FSCTL_SET_ZERO_DATA` on Windows).
-- **Metadata Scrubbing**: Eliminates forensic breadcrumbs by randomizing filenames (16-character alphanumeric strings) and truncating file allocations to zero bytes before final unlinking.
-
-### 📋 Enterprise Compliance & Safety
-- **Verifiable Audit Logging**: Generates comprehensive, cryptographic-proof destruction reports (`--audit-log`) in both human-readable `Text` and machine-readable `JSON` formats for regulatory compliance (GDPR, HIPAA).
-- **Read-Back Verification**: Optional empirical validation (`--verify`) that reads the physical blocks back into memory to assert successful overwriting against the expected byte pattern.
-- **Symlink Protection**: Intelligently identifies and isolates symbolic links, unlinking the reference without traversing or destroying the external target data.
-- **Interactive Safeguards**: Professional confirmation prompts prevent accidental recursive disasters. Can be bypassed for automation via the `--force` flag.
-- **Dry-Run Mode**: Safely simulate complex exclusion (`--exclude`) and recursive operations without modifying the filesystem.
-
----
-
-## 🚀 Installation
-
-Ensure you have the latest stable [Rust toolchain](https://rustup.rs/) installed.
-
-### Arch Linux (AUR)
-For Arch Linux and its derivatives (Manjaro, EndeavourOS), you can install the package directly from the AUR using your preferred helper:
+To run a standard cryptographic overwrite, type the following in a terminal:
 ```bash
-yay -S sys-shred
+sys-shred target_file.txt
 ```
 
-### Crates.io (Recommended for other distros)
-The easiest way to install `sys-shred` across platforms is via Cargo:
+## Install
+
+Use the stable version via Cargo (Recommended):
 ```bash
 cargo install sys-shred
 ```
 
-### Automated Scripts
-Fastest method for standard environments.
-
-**Linux / macOS:**
+Use the Arch Linux User Repository (AUR):
 ```bash
-bash scripts/install.sh
+yay -S sys-shred
 ```
 
-**Windows (PowerShell):**
-```powershell
-.\scripts\install.ps1
-```
+# Links
 
-### Manual Compilation
-For environments requiring strict source compilation.
-```bash
-git clone https://github.com/v1lleneuve/sys-shred.git
-cd sys-shred
-cargo build --release --locked
-```
-The optimized executable will be located at `target/release/sys-shred`.
+- [GitHub Repository](https://github.com/v1lleneuve/sys-shred)
+- [Crates.io](https://crates.io/crates/sys-shred)
+- [AUR Package](https://aur.archlinux.org/packages/sys-shred)
 
----
+# Index
 
-## 💻 Usage Guide
+- [Erasure Algorithms](#erasure-algorithms)
+    - [Standard Cryptographic](#standard-cryptographic)
+    - [Military Grade (DoD)](#military-grade-dod)
+    - [Maximum Security (Gutmann)](#maximum-security-gutmann)
+- [Advanced Targeting](#advanced-targeting)
+    - [Recursive Destruction](#recursive-destruction)
+    - [Glob Exclusions](#glob-exclusions)
+    - [Dry-Run Simulation](#dry-run-simulation)
+- [Enterprise Features](#enterprise-features)
+    - [SSD TRIM / Discard](#ssd-trim--discard)
+    - [JSON Audit Logging](#json-audit-logging)
+    - [Hardware Read-Back Verification](#hardware-read-back-verification)
+- [Safety Guards](#safety-guards)
 
-> [!TIP]  
-> Execute `sys-shred --help` for the complete schema of flags and arguments.
+## Erasure Algorithms
 
-### Foundational Operations
+sys-shred provides multiple algorithms to securely overwrite data.
 
-**Standard erasure (Cryptographic Random, 3 passes):**
+### Standard Cryptographic
+By default, the tool overwrites data using 3 passes of cryptographically secure random entropy generated by `StdRng`.
 ```bash
 sys-shred confidential.pdf
 ```
 
-**Military-grade erasure (DoD 5220.22-M):**
+### Military Grade (DoD)
+Implements the US Department of Defense 5220.22-M standard (Pass 1: Zeros, Pass 2: Ones, Pass 3: Random).
 ```bash
 sys-shred sensitive_data.bin --method dod
 ```
 
-### Advanced Targeting
-
-**Recursive multi-threaded destruction with hardware verification:**
+### Maximum Security (Gutmann)
+Implements the rigorous 35-pass Gutmann algorithm, designed for older magnetic media.
 ```bash
-sys-shred ./classified_folder --recursive --verify
+sys-shred classified_archive.tar.gz --method gutmann
 ```
 
-**Safe simulation (Dry-Run) with glob-pattern exclusions:**
+## Advanced Targeting
+
+### Recursive Destruction
+Destroy entire directory trees using a highly optimized, lock-free parallel execution engine.
 ```bash
-sys-shred ./project_root --recursive --dry-run --exclude "*.git/*" --exclude "*.log"
+sys-shred ./project_folder --recursive
 ```
 
-### Enterprise Audit & SSD Optimization
-
-**Compliance-ready JSON audit report generation:**
+### Glob Exclusions
+Safely skip specific files or directories using wildcard patterns.
 ```bash
-sys-shred ./financial_records -r --audit-log ./compliance_report.json --audit-format json
+sys-shred ./server_logs --recursive --exclude "*.git/*"
 ```
 
-**Modern SSD sanitization (Zero-fill + TRIM command):**
+### Dry-Run Simulation
+Preview exactly what files will be targeted without modifying the filesystem.
 ```bash
-sys-shred ./nvme_target --method zero --trim
+sys-shred ./directory --recursive --dry-run
 ```
 
----
+## Enterprise Features
 
-## 🏛️ Security Lifecycle Architecture
+### SSD TRIM / Discard
+On modern SSDs and Flash-based media, wear-leveling algorithms may move data to different physical blocks. Use the `--trim` flag to dispatch hardware-level block deallocation commands (`FALLOC_FL_PUNCH_HOLE` on Linux, `FSCTL_SET_ZERO_DATA` on Windows).
+```bash
+sys-shred ./nvme_drive --method zero --trim
+```
 
-When `sys-shred` targets a file, it executes the following atomic sequence:
+### JSON Audit Logging
+Generate verifiable, cryptographic-proof destruction reports for GDPR/HIPAA compliance.
+```bash
+sys-shred ./financials -r --audit-log ./report.json --audit-format json
+```
 
-1. **Access Acquisition**: Secures read/write handles to the target.
-2. **Algorithmic Overwrite**: Writes data streams (Zeros, Random, DoD, Gutmann) over the logical boundaries of the file.
-3. **Hardware Flush (`fsync`)**: Commands the storage controller to commit the write cache to non-volatile memory.
-4. **Empirical Verification** *(Optional)*: Reads the committed sectors back into RAM and asserts byte-for-byte equality against the expected overwrite pattern.
-5. **Metadata Obfuscation**: Renames the file to a random string to obscure its original identity in the Master File Table (MFT) or inode structure.
-6. **Block Deallocation** *(Optional)*: Issues a TRIM command to instruct the SSD controller to drop the physical mapping.
-7. **Truncation**: Sets the file size to 0 bytes.
-8. **Unlinking**: Severs the file from the directory tree, concluding the destruction.
+### Hardware Read-Back Verification
+Empirically validate destruction by reading the physical blocks back into memory to assert successful overwriting.
+```bash
+sys-shred ./target --verify
+```
 
----
+## Safety Guards
 
-## ⚖️ License
+- **Symlink Isolation**: Intelligently identifies and isolates symbolic links, unlinking the reference without traversing or destroying the external target data.
+- **Interactive Prompts**: Professional confirmation prompts prevent accidental recursive disasters. Can be bypassed via `--force`.
 
-This software is distributed under the **MIT License**. See the `LICENSE` file for details.
+# License
+Copyright (c) 2026 V1lleneuve
 
-*Engineered for reliability. Use responsibly.*
+Licensed under the MIT License:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Thus, the maintainers of the project can't be held liable for any potential misuse of this project.
