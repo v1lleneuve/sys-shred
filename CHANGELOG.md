@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] - 2026-06-08
 
 ### Added
+- **Arch User Repository (AUR)**: Officially published to the AUR. Arch Linux users can now install the utility via `yay -S sys-shred`.
 - **Official crates.io Release**: `sys-shred` is now officially available on crates.io and can be installed globally via `cargo install sys-shred`.
 - **Production Stable**: Achieved v1.0.0 milestone. The tool is now considered production-ready with zero known bugs, zero compiler warnings, and full test coverage.
 - **Symlink & Hardlink Safety**: Added safety checks to prevent accidental data destruction when targeting symbolic links. Only the link itself is removed.

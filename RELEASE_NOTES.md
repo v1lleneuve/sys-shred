@@ -14,7 +14,7 @@ The `v1.0.0` milestone marks `sys-shred` as a production-stable, forensic-grade 
 > This release guarantees absolute safety against symlink traversal and handles millions of files with a flat memory footprint.
 
 #### Key Enhancements
-*   **Official crates.io Release**: `sys-shred` is now officially published to the Rust package registry. Install instantly via `cargo install sys-shred`.
+*   **Official Packaging (AUR & crates.io)**: `sys-shred` is now officially published to the Rust package registry (`cargo install sys-shred`) and the Arch User Repository (`yay -S sys-shred`), enabling seamless installation across Linux ecosystems.
 *   **Symlink Safety**: Explicitly protects against following symbolic links. The engine will securely unlink the symlink itself without destroying the target data, preventing catastrophic out-of-scope erasure.
 *   **Interactive Safeguards**: Destructive operations now require explicit confirmation via `dialoguer`. Power users and scripts can bypass this with the new `-f` or `--force` flag.
 *   **Stream-Based Traversal**: Refactored the core recursive engine to process files lazily, reducing RAM usage to near-zero even when shredding directories with millions of files.

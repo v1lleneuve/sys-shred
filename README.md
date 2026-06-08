@@ -54,8 +54,14 @@ Built with Rust and powered by a highly optimized, lock-free parallel execution 
 
 Ensure you have the latest stable [Rust toolchain](https://rustup.rs/) installed.
 
-### Crates.io (Recommended)
-The easiest way to install `sys-shred` is via Cargo:
+### Arch Linux (AUR)
+For Arch Linux and its derivatives (Manjaro, EndeavourOS), you can install the package directly from the AUR using your preferred helper:
+```bash
+yay -S sys-shred
+```
+
+### Crates.io (Recommended for other distros)
+The easiest way to install `sys-shred` across platforms is via Cargo:
 ```bash
 cargo install sys-shred
 ```
