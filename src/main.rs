@@ -24,6 +24,7 @@ fn main() {
         args.dry_run,
         args.verify,
         args.trim,
+        args.force,
         &args.exclude,
         !args.verbose,
     ) {

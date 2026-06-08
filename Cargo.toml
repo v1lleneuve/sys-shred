@@ -1,10 +1,16 @@
 [package]
 name = "sys-shred"
-version = "0.4.0"
+version = "1.0.0"
 edition = "2021"
 authors = ["V1lleneuve <v1lleneuve@proton.me>"]
-description = "A professional, secure file erasure (anti-forensics) CLI tool."
+description = "A forensic-grade, multi-threaded command-line utility for secure file erasure and anti-forensics."
 license = "MIT"
+repository = "https://github.com/v1lleneuve/sys-shred"
+homepage = "https://github.com/v1lleneuve/sys-shred"
+documentation = "https://github.com/v1lleneuve/sys-shred#readme"
+readme = "README.md"
+keywords = ["security", "forensics", "cli", "erasure", "shred"]
+categories = ["command-line-utilities", "os", "filesystem"]
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
@@ -23,3 +29,4 @@ serde_json = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
 libc = "0.2"
 windows-sys = { version = "0.52", features = ["Win32_Foundation", "Win32_Storage_FileSystem", "Win32_System_IO"] }
+dialoguer = "0.11"

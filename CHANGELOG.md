@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-06-07
+
+### Added
+- **Official crates.io Release**: `sys-shred` is now officially available on crates.io and can be installed globally via `cargo install sys-shred`.
+- **Production Stable**: Achieved v1.0.0 milestone. The tool is now considered production-ready with zero known bugs, zero compiler warnings, and full test coverage.
+- **Symlink & Hardlink Safety**: Added safety checks to prevent accidental data destruction when targeting symbolic links. Only the link itself is removed.
+- **Interactive Prompts**: Added a confirmation prompt before executing destructive actions. Can be bypassed using the new `--force` or `-f` flag.
+- **Memory Efficiency**: Re-engineered the recursive traversal engine to use stream-based iterators (`par_bridge` compatible logic) instead of loading all paths into memory, allowing the tool to safely shred millions of files without RAM bloat.
+
 ## [0.4.0] - 2026-06-07
 
 ### Added

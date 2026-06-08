@@ -6,11 +6,11 @@ The following versions of sys-shred are currently supported with security update
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
-| 0.3.x   | :warning: Legacy   |
-| < 0.3.x | :x: End of Life    |
+| 1.0.x   | :white_check_mark: |
+| 0.4.x   | :warning: Legacy   |
+| < 0.4.x | :x: End of Life    |
 
-## Security Model (v0.3.0+)
+## Security Model (v1.0.0+)
 
 `sys-shred` employs a multi-layered anti-forensic approach:
 - **Entropy Source**: Uses `rand::rngs::StdRng` for cryptographically secure random data generation.

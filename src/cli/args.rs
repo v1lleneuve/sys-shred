@@ -39,7 +39,7 @@ pub enum AuditFormat {
 #[derive(Parser, Debug)]
 #[command(
     author = "V1lleneuve",
-    version = "0.4.0",
+    version = "1.0.0",
     about = "Securely shreds files using cryptographic data and metadata obfuscation",
     long_about = "A high-integrity secure deletion tool that bypasses OS file-system caching to ensure hardware-level data destruction."
 )]
@@ -97,14 +97,19 @@ pub struct Args {
     )]
     pub exclude: Vec<String>,
 
-    /// Inform the SSD to discard the blocks used by the file (TRIM).
+    /// informs the SSD to discard the blocks used by the file (TRIM).
     #[arg(
         long,
         help = "Send a TRIM/Discard command to the SSD after shredding (Linux/Windows only)"
     )]
     pub trim: bool,
 
+    /// Force destruction without interactive confirmation.
+    #[arg(short, long, help = "Skip interactive confirmation prompts")]
+    pub force: bool,
+
     /// Path to save the forensic audit log.
+
     #[arg(
         long,
         value_name = "LOG_PATH",

@@ -7,13 +7,14 @@ use crate::cli::args::ShredMethod;
 use crate::error::{ShredError, ShredResult};
 use crate::ui::ProgressReporter;
 use chrono::Utc;
+use dialoguer::Confirm;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use metadata::MetadataHandler;
 use overwrite::Overwriter;
 use rayon::prelude::*;
 use report::{ShredEvent, ShredReport};
 use std::fs::{self, OpenOptions};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use unlink::Unlinker;
@@ -26,6 +27,7 @@ pub struct Shredder {
     dry_run: bool,
     verify: bool,
     trim: bool,
+    force: bool,
     exclude: GlobSet,
     progress: Option<ProgressReporter>,
     cancelled: Arc<AtomicBool>,
@@ -34,21 +36,14 @@ pub struct Shredder {
 
 impl Shredder {
     /// Initializes a new `Shredder` with the specified destruction policy.
-    ///
-    /// # Arguments
-    /// * `method` - The erasure algorithm to utilize.
-    /// * `passes` - Number of overwrite passes (if applicable to the method).
-    /// * `dry_run` - If true, no I/O operations will be performed.
-    /// * `verify` - If true, data is read back after each pass to verify destruction.
-    /// * `trim` - If true, sends a TRIM command to the SSD after shredding.
-    /// * `exclude_patterns` - Glob patterns for files to skip.
-    /// * `show_progress` - Whether to display a terminal progress bar.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         method: ShredMethod,
         passes: u32,
         dry_run: bool,
         verify: bool,
         trim: bool,
+        force: bool,
         exclude_patterns: &[String],
         show_progress: bool,
     ) -> ShredResult<Self> {
@@ -63,6 +58,7 @@ impl Shredder {
             dry_run,
             verify,
             trim,
+            force,
             exclude: builder
                 .build()
                 .map_err(|e| ShredError::Cli(e.to_string()))?,
@@ -106,15 +102,25 @@ impl Shredder {
             return Ok(());
         }
 
-        if self.should_exclude(path) {
-            if self.dry_run {
-                println!("\x1b[33m[SKIP]\x1b[0m (Excluded): {:?}", path);
+        // Safety: Check if it's a symlink. We only delete the link, NOT the target data.
+        let metadata = fs::symlink_metadata(path)?;
+        if metadata.file_type().is_symlink() {
+            if !self.dry_run && !keep {
+                fs::remove_file(path)?;
             }
             return Ok(());
         }
 
+        // Safety: Skip special files (FIFOs, Sockets, etc.) to prevent hanging.
+        if !metadata.is_file() && !metadata.is_dir() {
+            return Ok(());
+        }
+
+        if self.should_exclude(path) {
+            return Ok(());
+        }
+
         if self.dry_run {
-            println!("\x1b[32m[DRY-RUN]\x1b[0m Would shred: {:?}", path);
             self.record_event(ShredEvent {
                 path: path.to_path_buf(),
                 timestamp: Utc::now(),
@@ -127,19 +133,15 @@ impl Shredder {
 
         let res = (|| -> ShredResult<()> {
             let mut file = OpenOptions::new().read(true).write(true).open(path)?;
-
             let mut overwriter =
                 Overwriter::new(&mut file, self.verify, Arc::clone(&self.cancelled));
             overwriter.execute(self.method.clone(), self.passes)?;
-
             drop(file);
 
             let obfuscated_path = MetadataHandler::obfuscate_filename(path)?;
-
             if self.trim {
                 let _ = MetadataHandler::trim(&obfuscated_path);
             }
-
             MetadataHandler::truncate(&obfuscated_path)?;
 
             if !keep {
@@ -161,19 +163,37 @@ impl Shredder {
                 pr.inc_file_complete();
             }
         }
-
         res
     }
 
     /// Entry point for the shredding operation.
-    ///
-    /// Handles both individual files and recursive directory traversal.
     pub fn shred(&self, path: &Path, recursive: bool, keep: bool) -> ShredResult<()> {
         if !path.exists() {
             return Err(ShredError::InvalidPath(format!(
                 "Path does not exist: {:?}",
                 path
             )));
+        }
+
+        // Professional Guard: Interactive Confirmation
+        if !self.force && !self.dry_run {
+            let prompt = if path.is_dir() && recursive {
+                format!(
+                    "Are you sure you want to RECURSIVELY destroy all contents in {:?}?",
+                    path
+                )
+            } else {
+                format!("Are you sure you want to permanently destroy {:?}?", path)
+            };
+
+            if !Confirm::new()
+                .with_prompt(prompt)
+                .default(false)
+                .interact()
+                .unwrap_or(false)
+            {
+                return Err(ShredError::Cli("Operation cancelled by user".to_string()));
+            }
         }
 
         if path.is_file() {
@@ -184,68 +204,46 @@ impl Shredder {
         } else if path.is_dir() {
             if !recursive {
                 return Err(ShredError::InvalidPath(format!(
-                    "Target {:?} is a directory. Use --recursive to destroy it.",
+                    "Target {:?} is a directory. Use --recursive.",
                     path
                 )));
             }
 
+            // For directories, we still need a count for the progress bar
+            // but we'll collect only the directory entries for bottom-up cleanup.
             let mut entries = Vec::new();
-            for entry in WalkDir::new(path) {
-                if self.is_cancelled() {
-                    break;
-                }
-                match entry {
-                    Ok(e) => entries.push(e.into_path()),
-                    Err(e) => {
-                        return Err(ShredError::Io(std::io::Error::other(format!(
-                            "Failed to access directory entry: {}",
-                            e
-                        ))))
-                    }
-                }
-            }
+            let mut file_count = 0;
 
-            if self.is_cancelled() {
-                return Ok(());
+            for e in WalkDir::new(path).into_iter().flatten() {
+                if e.file_type().is_file() {
+                    file_count += 1;
+                }
+                entries.push(e.into_path());
             }
-
-            let files: Vec<PathBuf> = entries.iter().filter(|p| p.is_file()).cloned().collect();
 
             if let Some(ref pr) = self.progress {
-                pr.start_files(files.len() as u64);
+                pr.start_files(file_count);
             }
 
-            // Parallel file shredding
-            files.par_iter().try_for_each(|f| {
-                if self.is_cancelled() {
-                    return Ok(());
-                }
-                self.shred_file(f, keep)
-            })?;
+            // Parallel execution using the pre-collected entries for now,
+            // but filtered for files.
+            entries
+                .par_iter()
+                .filter(|p| p.is_file())
+                .try_for_each(|f| self.shred_file(f, keep))?;
 
             if !keep && !self.dry_run && !self.is_cancelled() {
-                let mut dirs: Vec<_> = entries.iter().filter(|p| p.is_dir()).collect();
-                dirs.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
-                for dir in dirs {
-                    if self.is_cancelled() {
-                        break;
-                    }
-                    if dir.exists() {
-                        // We ignore errors during directory removal (e.g. if a directory
-                        // is not empty due to exclusions).
+                entries.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
+                for dir in entries {
+                    if dir.is_dir() && dir.exists() {
                         let _ = fs::remove_dir(dir);
                     }
                 }
-            } else if self.dry_run {
-                println!(
-                    "\x1b[32m[DRY-RUN]\x1b[0m Would remove directories in: {:?}",
-                    path
-                );
             }
             Ok(())
         } else {
             Err(ShredError::InvalidPath(format!(
-                "Target is not a file or directory: {:?}",
+                "Invalid target type: {:?}",
                 path
             )))
         }

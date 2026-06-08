@@ -20,7 +20,17 @@ fn test_audit_logging() {
         file.write_all(b"AUDIT ME").unwrap();
     }
 
-    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, false, &[], false).unwrap();
+    let shredder = Shredder::new(
+        ShredMethod::Random,
+        1,
+        false,
+        false,
+        false,
+        true,
+        &[],
+        false,
+    )
+    .unwrap();
     shredder.shred(&file_path, false, false).unwrap();
 
     let report = shredder.generate_report();
@@ -56,7 +66,17 @@ fn test_standard_shredding_lifecycle() {
     }
 
     // Initialize shredder with 1 pass for speed in tests
-    let shredder = Shredder::new(ShredMethod::Random, 1, false, false, false, &[], false).unwrap();
+    let shredder = Shredder::new(
+        ShredMethod::Random,
+        1,
+        false,
+        false,
+        false,
+        true,
+        &[],
+        false,
+    )
+    .unwrap();
 
     // Execute shredding (non-recursive)
     shredder
@@ -79,7 +99,8 @@ fn test_dry_run_mode() {
         file.write_all(b"STAY ALIVE").unwrap();
     }
 
-    let shredder = Shredder::new(ShredMethod::Random, 1, true, false, false, &[], false).unwrap();
+    let shredder =
+        Shredder::new(ShredMethod::Random, 1, true, false, false, true, &[], false).unwrap();
     shredder.shred(&file_path, false, false).unwrap();
 
     // In dry-run, the file MUST still exist
@@ -101,6 +122,7 @@ fn test_exclude_patterns() {
         false,
         false,
         false,
+        true,
         &["*.log".to_string()],
         false,
     )
