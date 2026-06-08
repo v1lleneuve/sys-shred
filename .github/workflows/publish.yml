@@ -1,0 +1,20 @@
+name: Publish to Crates.io
+
+on:
+  release:
+    types: [published]
+jobs:
+  publish:
+    name: Cargo Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Install Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Cargo Publish
+        run: cargo publish --token ${{ secrets.CRATES_TOKEN }}
+        
