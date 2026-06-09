@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-09
+
+### Added
+- **Modern UI Refactor**: Completely overhauled the terminal output to match the `rustc` / `cargo` aesthetic.
+- **Styled Labels**: Introduced bold, color-coded labels (e.g., `Shredding`, `Finished`, `Error`) for better readability.
+- **Enhanced Progress Reporting**: Refined `indicatif` templates for a cleaner, more professional look.
+- **New Dependency**: Integrated `console` crate for robust, cross-platform terminal styling.
+
+### Changed
+- Standardized all console output through a centralized `UI` styling engine.
+- Replaced manual ANSI escape codes with a type-safe styling API.
+
 ## [1.0.1] - 2026-06-09
 
 ### Fixed

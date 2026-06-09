@@ -4,6 +4,23 @@ This document tracks the evolution of the `sys-shred` utility. Each release focu
 
 ---
 
+## [1.1.0] - 2026-06-09
+### The "Cargo-Look" UI Refactor
+
+The `v1.1.0` release introduces a major overhaul of the terminal user interface, bringing a modern and professional aesthetic inspired by the Rust compiler (`rustc`) and `cargo`.
+
+> [!IMPORTANT]
+> **Modern Aesthetic**
+> This update replaces all legacy terminal output with a structured, bold, and color-coded reporting system. It's not just about looks—the new UI improves readability and operational clarity.
+
+#### Key Enhancements
+*   **Rustc-Inspired Styling**: All output now follows the "Label -> Message" pattern (e.g., `   Shredding file.txt`) with bold, high-contrast colors.
+*   **Standardized UI Engine**: Introduced a centralized styling module using the `console` crate, ensuring consistent appearance across all platforms and eliminating brittle manual ANSI codes.
+*   **Clean Progress Reporting**: The progress bar has been simplified and styled to match the new aesthetic, providing high-integrity feedback without terminal clutter.
+*   **Precise Timing**: Final success messages now include high-resolution execution timing, giving users immediate feedback on performance.
+
+---
+
 ## [1.0.1] - 2026-06-09
 ### Maintenance & Reliability Patch
 
