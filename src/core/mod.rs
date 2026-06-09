@@ -200,7 +200,11 @@ impl Shredder {
             if let Some(ref pr) = self.progress {
                 pr.start_files(1);
             }
-            self.shred_file(path, keep)
+            let res = self.shred_file(path, keep);
+            if let Some(ref pr) = self.progress {
+                pr.finish();
+            }
+            res
         } else if path.is_dir() {
             if !recursive {
                 return Err(ShredError::InvalidPath(format!(
@@ -226,12 +230,16 @@ impl Shredder {
             }
 
             // Parallel execution using the pre-collected entries.
-            entries
+            let res = entries
                 .par_iter()
                 .filter(|p| p.is_file() && !self.should_exclude(p))
-                .try_for_each(|f| self.shred_file(f, keep))?;
+                .try_for_each(|f| self.shred_file(f, keep));
 
-            if !keep && !self.dry_run && !self.is_cancelled() {
+            if let Some(ref pr) = self.progress {
+                pr.finish();
+            }
+
+            if res.is_ok() && !keep && !self.dry_run && !self.is_cancelled() {
                 entries.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
                 for dir in entries {
                     if dir.is_dir() && dir.exists() {
@@ -239,7 +247,7 @@ impl Shredder {
                     }
                 }
             }
-            Ok(())
+            res
         } else {
             Err(ShredError::InvalidPath(format!(
                 "Invalid target type: {:?}",

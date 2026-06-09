@@ -40,7 +40,10 @@ impl ProgressReporter {
 
     /// Finalizes the progress reporting.
     pub fn finish(&self) {
-        self.bar.finish_and_clear();
+        if !self.bar.is_finished() {
+            self.bar.set_position(self.bar.length().unwrap_or(0));
+            self.bar.finish_and_clear();
+        }
     }
 }
 

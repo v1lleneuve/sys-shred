@@ -1,6 +1,6 @@
 [package]
 name = "sys-shred"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2021"
 authors = ["V1lleneuve <v1lleneuve@proton.me>"]
 description = "A forensic-grade, multi-threaded command-line utility for secure file erasure and anti-forensics."

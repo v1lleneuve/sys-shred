@@ -2,7 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.0] - 2026-06-09
+## [1.1.1] - 2026-06-11
+
+### Fixed
+- **Visual Race Condition**: Resolved an issue where the progress bar would occasionally display incomplete counts (e.g., 95/100) before being finalized.
+- **Progress Synchronization**: Added explicit finalization calls to ensure the UI reaches 100% before clearing.
+
+## [1.1.0] - 2026-06-10
+
 
 ### Added
 - **Modern UI Refactor**: Completely overhauled the terminal output to match the `rustc` / `cargo` aesthetic.

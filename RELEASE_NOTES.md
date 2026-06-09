@@ -4,7 +4,23 @@ This document tracks the evolution of the `sys-shred` utility. Each release focu
 
 ---
 
-## [1.1.0] - 2026-06-09
+## [1.1.1] - 2026-06-11
+### UI Synchronization Patch
+
+The `v1.1.1` release is a targeted patch to resolve visual race conditions in the progress reporting system.
+
+> [!IMPORTANT]
+> **Visual Integrity**
+> This update ensures that the progress bar always reaches 100% and flushes its final state before being cleared, preventing misleading "partial" progress displays during high-speed parallel operations.
+
+#### Key Enhancements
+*   **Progress Bar Finalization**: Implemented explicit UI synchronization to ensure that all background worker threads have reported their completion before the progress bar is removed.
+*   **High-Speed Stability**: Hardened the UI reporting engine to maintain accuracy even during ultra-fast operations on small files where terminal refresh rates might otherwise miss the final increments.
+
+---
+
+## [1.1.0] - 2026-06-10
+
 ### The "Cargo-Look" UI Refactor
 
 The `v1.1.0` release introduces a major overhaul of the terminal user interface, bringing a modern and professional aesthetic inspired by the Rust compiler (`rustc`) and `cargo`.
