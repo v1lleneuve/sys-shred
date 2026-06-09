@@ -4,6 +4,27 @@ This document tracks the evolution of the `sys-shred` utility. Each release focu
 
 ---
 
+## [1.0.1] - 2026-06-09
+### Maintenance & Reliability Patch
+
+The `v1.0.1` release is a maintenance patch focused on hardening the destruction engine against edge cases and improving the responsiveness of the terminal user interface.
+
+> [!IMPORTANT]
+> **Reliability Patch**
+> This update fixes a rare race condition in filename obfuscation and ensures that the progress bar accurately reflects the work being performed by filtering out excluded files.
+
+> [!TIP]
+> **Improved Responsiveness**
+> If you need to stop a long-running shredding operation, `Ctrl+C` is now more responsive during the verification phase thanks to higher-frequency cancellation polling.
+
+#### Key Enhancements
+*   **Collision-Resistant Obfuscation**: Added retry logic for filename randomization. While 16-character alphanumeric collisions are astronomically rare, the engine now gracefully handles them by regenerating names up to 5 times.
+*   **Precision Progress Tracking**: Refined the progress bar calculation logic. Excluded files are now accurately filtered out before the progress bar initialization, providing a 1:1 ratio between the progress count and actual work performed.
+*   **Enhanced Interruption Latency**: Improved responsiveness to `Ctrl+C` by injecting high-frequency cancellation checks into the hardware verification loops.
+*   **Linux TRIM Hardening**: Improved error propagation for the `--trim` feature on Linux, ensuring hardware-level failures are reported back to the audit log.
+
+---
+
 ## [1.0.0] - 2026-06-08
 ### The Fortress Release (Production Stable)
 

@@ -210,26 +210,25 @@ impl Shredder {
             }
 
             // For directories, we still need a count for the progress bar
-            // but we'll collect only the directory entries for bottom-up cleanup.
             let mut entries = Vec::new();
             let mut file_count = 0;
 
             for e in WalkDir::new(path).into_iter().flatten() {
-                if e.file_type().is_file() {
+                let entry_path = e.into_path();
+                if entry_path.is_file() && !self.should_exclude(&entry_path) {
                     file_count += 1;
                 }
-                entries.push(e.into_path());
+                entries.push(entry_path);
             }
 
             if let Some(ref pr) = self.progress {
                 pr.start_files(file_count);
             }
 
-            // Parallel execution using the pre-collected entries for now,
-            // but filtered for files.
+            // Parallel execution using the pre-collected entries.
             entries
                 .par_iter()
-                .filter(|p| p.is_file())
+                .filter(|p| p.is_file() && !self.should_exclude(p))
                 .try_for_each(|f| self.shred_file(f, keep))?;
 
             if !keep && !self.dry_run && !self.is_cancelled() {

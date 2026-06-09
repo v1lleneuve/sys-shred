@@ -164,6 +164,9 @@ impl<'a> Overwriter<'a> {
             self.file.read_exact(&mut buffer[..current_chunk])?;
 
             for &byte in &buffer[..current_chunk] {
+                if self.is_cancelled() {
+                    return Ok(());
+                }
                 if byte != expected_byte {
                     return Err(ShredError::Obfuscation(format!(
                         "Verification failed: Expected 0x{:02X}, found 0x{:02X} at offset {}",

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-06-09
+
+### Fixed
+- **Filename Collision Retry**: Added retry logic to `obfuscate_filename` to handle extremely rare cases where a randomly generated filename might already exist.
+- **Improved SSD TRIM Error Handling**: Now explicitly captures and reports I/O errors during hardware-level block deallocation on Linux.
+- **Accurate Progress Reporting**: Fixed a bug where the progress bar count included excluded files, ensuring a precise file count during recursive operations.
+- **High-Frequency Cancellation**: Added a cancellation check inside the byte-level comparison loop for better responsiveness during verification passes.
+
 ## [1.0.0] - 2026-06-08
 
 ### Added

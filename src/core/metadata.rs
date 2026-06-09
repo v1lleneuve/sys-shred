@@ -3,7 +3,7 @@
 //! Handles the transformation of file metadata to prevent path-based recovery
 //! and information leakage through filenames.
 
-use crate::error::ShredResult;
+use crate::error::{ShredError, ShredResult};
 use rand::{distributions::Alphanumeric, Rng};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -22,17 +22,24 @@ impl MetadataHandler {
     pub fn obfuscate_filename(path: &Path) -> ShredResult<PathBuf> {
         let parent = path.parent().unwrap_or_else(|| Path::new("."));
 
-        // Generate a 16-character random alphanumeric string
-        let random_name: String = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(16)
-            .map(char::from)
-            .collect();
+        // Retry logic to handle rare filename collisions
+        for _ in 0..5 {
+            let random_name: String = rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(16)
+                .map(char::from)
+                .collect();
 
-        let new_path = parent.join(random_name);
-        fs::rename(path, &new_path)?;
+            let new_path = parent.join(random_name);
+            if !new_path.exists() {
+                fs::rename(path, &new_path)?;
+                return Ok(new_path);
+            }
+        }
 
-        Ok(new_path)
+        Err(ShredError::Obfuscation(
+            "Failed to generate a unique random filename after multiple attempts".to_string(),
+        ))
     }
 
     /// Truncates a file to zero bytes and flushes the change.
@@ -57,9 +64,12 @@ impl MetadataHandler {
         #[cfg(target_os = "linux")]
         {
             let fd = file.as_raw_fd();
-            unsafe {
+            let res = unsafe {
                 // FALLOC_FL_PUNCH_HOLE (0x02) | FALLOC_FL_KEEP_SIZE (0x01)
-                libc::fallocate(fd, 0x01 | 0x02, 0, len as libc::off_t);
+                libc::fallocate(fd, 0x01 | 0x02, 0, len as libc::off_t)
+            };
+            if res != 0 {
+                return Err(ShredError::Io(std::io::Error::last_os_error()));
             }
         }
 
