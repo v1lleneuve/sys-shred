@@ -132,7 +132,18 @@ impl Shredder {
         }
 
         let res = (|| -> ShredResult<()> {
-            let mut file = OpenOptions::new().read(true).write(true).open(path)?;
+            let mut options = OpenOptions::new();
+            options.read(true).write(true);
+
+            #[cfg(windows)]
+            {
+                use std::os::windows::fs::OpenOptionsExt;
+                // FILE_FLAG_WRITE_THROUGH: Ensures data is written through any intermediate
+                // caches directly to the physical disk.
+                options.custom_flags(0x80000000);
+            }
+
+            let mut file = options.open(path)?;
             let mut overwriter =
                 Overwriter::new(&mut file, self.verify, Arc::clone(&self.cancelled));
             overwriter.execute(self.method.clone(), self.passes)?;
@@ -213,36 +224,46 @@ impl Shredder {
                 )));
             }
 
-            // For directories, we still need a count for the progress bar
-            let mut entries = Vec::new();
+            // Dual-Pass Walk:
+            // Pass 1: Count files for the progress bar (minimal RAM, only integers)
             let mut file_count = 0;
-
-            for e in WalkDir::new(path).into_iter().flatten() {
-                let entry_path = e.into_path();
-                if entry_path.is_file() && !self.should_exclude(&entry_path) {
+            for entry in WalkDir::new(path).into_iter().flatten() {
+                if entry.file_type().is_file() && !self.should_exclude(entry.path()) {
                     file_count += 1;
                 }
-                entries.push(entry_path);
             }
 
             if let Some(ref pr) = self.progress {
                 pr.start_files(file_count);
             }
 
-            // Parallel execution using the pre-collected entries.
-            let res = entries
-                .par_iter()
-                .filter(|p| p.is_file() && !self.should_exclude(p))
-                .try_for_each(|f| self.shred_file(f, keep));
+            // Pass 2: Process files in parallel using "True Streaming" via par_bridge.
+            // This avoids collecting millions of paths into a Vec, keeping RAM usage constant.
+            let res = WalkDir::new(path)
+                .into_iter()
+                .flatten()
+                .filter(|e| e.file_type().is_file() && !self.should_exclude(e.path()))
+                .par_bridge() // Parallelize the iterator directly
+                .try_for_each(|entry| self.shred_file(entry.path(), keep));
 
             if let Some(ref pr) = self.progress {
                 pr.finish();
             }
 
+            // Post-cleanup: Remove directories bottom-up if not keeping.
             if res.is_ok() && !keep && !self.dry_run && !self.is_cancelled() {
-                entries.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
-                for dir in entries {
-                    if dir.is_dir() && dir.exists() {
+                // We do a final single-threaded walk to remove empty directories
+                // from the bottom up.
+                let mut dirs: Vec<_> = WalkDir::new(path)
+                    .into_iter()
+                    .flatten()
+                    .filter(|e| e.file_type().is_dir())
+                    .map(|e| e.into_path())
+                    .collect();
+
+                dirs.sort_by_key(|b| std::cmp::Reverse(b.as_os_str().len()));
+                for dir in dirs {
+                    if dir.exists() {
                         let _ = fs::remove_dir(dir);
                     }
                 }

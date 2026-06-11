@@ -1,6 +1,6 @@
 # Maintainer: V1lleneuve <v1lleneuve@proton.me>
 pkgname=sys-shred
-pkgver=1.1.1
+pkgver=1.2.0
 pkgrel=1
 pkgdesc="A forensic-grade, multi-threaded command-line utility for secure file erasure and anti-forensics."
 arch=('x86_64' 'aarch64' 'i686' 'pentium4' 'armv7h')

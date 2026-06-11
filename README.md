@@ -16,9 +16,10 @@ This project is not affiliated with any government or military entity. It is pro
 ## Key Features
 
 - **Hardware-Level Sync:** Uses `fsync` and `sync_all` to bypass volatile OS caches and ensure data is written to physical media.
-- **Memory Efficient:** A stream-based architecture that maintains a low RAM footprint even when processing millions of files.
+- **True Streaming Parallelism:** A major v1.2.0 upgrade that parallelizes file discovery and destruction, maintaining a constant RAM footprint even when processing millions of files.
+- **Aggressive Cache Bypassing:** Utilizes platform-specific hints (`F_NOCACHE` on macOS, `posix_fadvise` on Linux) to ensure data bypasses the OS page cache for maximum forensic reliability.
 - **SSD Optimization:** Supports hardware `TRIM` commands to mitigate wear-leveling artifacts on modern flash storage.
-- **Parallel Performance:** Powered by `rayon` for massive parallel execution and high throughput.
+- **Parallel Performance:** Powered by `rayon` and `par_bridge` for high-throughput execution.
 
 > [!IMPORTANT]
 > This is the official repository for `sys-shred`. Please report bugs and request features via [GitHub Issues](https://github.com/v1lleneuve/sys-shred/issues).

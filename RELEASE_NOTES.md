@@ -4,6 +4,24 @@ This document tracks the evolution of the `sys-shred` utility. Each release focu
 
 ---
 
+## [1.2.0] - 2026-06-12
+### The Performance & Precision Release
+
+The `v1.2.0` release is a major architectural upgrade focusing on high-performance streaming and aggressive hardware-level cache management.
+
+> [!IMPORTANT]
+> **Industrial-Grade Performance**
+> This update introduces "True Streaming" logic. `sys-shred` now uses `par_bridge` to parallelize discovery and destruction simultaneously, allowing it to handle massive directory trees (millions of files) with a fixed, ultra-low memory footprint.
+
+#### Key Enhancements
+*   **True Streaming Architecture**: Removed the legacy "collect-then-process" model. Files are now shredded as they are found in the directory walk, dramatically reducing latency and RAM usage.
+*   **OS-Specific Cache Bypassing**:
+    *   **macOS**: Now uses `F_NOCACHE` to explicitly instruct the kernel to bypass the page cache, ensuring data is sent directly to the hardware.
+    *   **Linux**: Implemented `posix_fadvise` (DONTNEED) to proactively flush overwritten data from the system cache, preventing "lazy writes" from lingering in volatile memory.
+*   **High-Precision Progress**: A new dual-pass discovery engine ensures that even with the new streaming model, the progress bar remains 100% accurate without sacrificing performance.
+
+---
+
 ## [1.1.1] - 2026-06-11
 ### UI Synchronization Patch
 

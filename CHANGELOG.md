@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-06-12
+
+### Added
+- **True Streaming Parallelism**: Re-engineered the recursive traversal engine to use `par_bridge`, allowing the tool to process files as they are discovered. This ensures a constant, ultra-low RAM footprint regardless of the number of files (e.g., millions of files).
+- **Aggressive OS Cache Bypassing**: Implemented platform-specific hints to bypass OS filesystem caches more aggressively.
+  - **Linux**: Utilizes `posix_fadvise` with `POSIX_FADV_DONTNEED` to minimize cache pollution.
+  - **macOS**: Utilizes `F_NOCACHE` to disable kernel-level caching for targeted files.
+- **Dual-Pass Progress Accuracy**: Implemented a lightweight initial walk to count files for precise progress bar initialization without loading paths into memory.
+
+### Changed
+- Refactored `Shredder` engine to be fully stream-based for industrial-grade performance.
+- Improved cross-platform reliability for hardware-level data commitment.
+
 ## [1.1.1] - 2026-06-11
 
 ### Fixed

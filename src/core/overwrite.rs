@@ -9,6 +9,8 @@ use crate::error::{ShredError, ShredResult};
 use rand::{rngs::StdRng, RngCore, SeedableRng};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
+#[cfg(unix)]
+use std::os::unix::io::AsRawFd;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -23,6 +25,25 @@ pub struct Overwriter<'a> {
 impl<'a> Overwriter<'a> {
     /// Creates a new `Overwriter` for a specific file handle.
     pub fn new(file: &'a mut File, verify: bool, cancelled: Arc<AtomicBool>) -> Self {
+        // Apply OS-specific hints for aggressive cache bypassing
+        #[cfg(target_os = "macos")]
+        {
+            let fd = file.as_raw_fd();
+            unsafe {
+                // F_NOCACHE: Turns off caching for this file descriptor.
+                libc::fcntl(fd, libc::F_NOCACHE, 1);
+            }
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            let fd = file.as_raw_fd();
+            unsafe {
+                // POSIX_FADV_DONTNEED: Hint to the kernel that we don't need this data in cache.
+                libc::posix_fadvise(fd, 0, 0, libc::POSIX_FADV_DONTNEED);
+            }
+        }
+
         Self {
             file,
             buffer_size: 64 * 1024,
