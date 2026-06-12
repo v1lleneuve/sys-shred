@@ -4,6 +4,25 @@ This document tracks the evolution of the `sys-shred` utility. Each release focu
 
 ---
 
+## [1.2.1] - 2026-06-12
+### Internal Refinement & Robustness Patch
+
+The `v1.2.1` release is a maintenance patch focused on memory efficiency and operational control.
+
+> [!IMPORTANT]
+> **Allocation Efficiency**
+> This update optimizes the core destruction engine to reuse internal buffers. While small, this change significantly reduces the pressure on the system allocator during intensive multi-pass algorithms like Gutmann.
+
+> [!TIP]
+> **Double Ctrl+C**
+> You can now force an immediate exit by pressing `Ctrl+C` twice. The first press still triggers a graceful cleanup, but the second press will now terminate the process immediately.
+
+#### Key Enhancements
+*   **Buffer Recycling**: Refactored `Overwriter` to allocate a single I/O buffer per file, reusing it across all overwrite and verification passes.
+*   **Tiered Interruption**: Enhanced signal logic to distinguish between "Graceful Cancellation" (1st press) and "Emergency Exit" (2nd press).
+
+---
+
 ## [1.2.0] - 2026-06-12
 ### The Performance & Precision Release
 

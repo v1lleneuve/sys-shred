@@ -5,6 +5,7 @@
 
 use clap::Parser;
 use std::process;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use sys_shred::cli::Args;
 use sys_shred::core::Shredder;
@@ -38,10 +39,18 @@ fn main() {
 
     // 4. Setup Signal Handling for graceful interruption
     let s_clone = Arc::clone(&shredder);
+    let handler_count = Arc::new(std::sync::atomic::AtomicU8::new(0));
     if let Err(e) = ctrlc::set_handler(move || {
-        eprintln!();
-        UI.warn("Interruption signal received. Cleaning up safely...");
-        s_clone.cancel();
+        let count = handler_count.fetch_add(1, Ordering::SeqCst);
+        if count == 0 {
+            eprintln!();
+            UI.warn("Interruption signal received. Cleaning up safely...");
+            UI.info("Hint", "Press Ctrl+C again to force immediate exit");
+            s_clone.cancel();
+        } else {
+            UI.error("Force exiting...");
+            process::exit(130); // 130 is standard for SIGINT
+        }
     }) {
         UI.warn(format!("Failed to set signal handler: {}", e));
     }

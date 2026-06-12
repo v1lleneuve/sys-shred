@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-06-12
+
+### Fixed
+- **Memory Optimization**: Refactored the `Overwriter` to reuse a single heap-allocated buffer across all write passes, reducing memory fragmentation and allocation overhead during multi-pass shredding.
+- **Robust Signal Handling**: Improved the `Ctrl+C` handler to allow for an immediate forced exit on a second interruption event, providing users with more control during long-running operations.
+
 ## [1.2.0] - 2026-06-12
 
 ### Added

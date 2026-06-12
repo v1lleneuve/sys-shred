@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// A specialized engine for performing secure cryptographic overwrites on a file.
 pub struct Overwriter<'a> {
     file: &'a mut File,
-    buffer_size: usize,
+    buffer: Vec<u8>,
     verify: bool,
     cancelled: Arc<AtomicBool>,
 }
@@ -44,9 +44,10 @@ impl<'a> Overwriter<'a> {
             }
         }
 
+        let buffer_size = 64 * 1024;
         Self {
             file,
-            buffer_size: 64 * 1024,
+            buffer: vec![0u8; buffer_size],
             verify,
             cancelled,
         }
@@ -117,16 +118,18 @@ impl<'a> Overwriter<'a> {
         let file_size = self.file.metadata()?.len();
         self.file.seek(SeekFrom::Start(0))?;
 
-        let buffer = vec![byte; self.buffer_size];
+        // Fill the reusable buffer with the fixed byte
+        self.buffer.fill(byte);
         let mut total_written: u64 = 0;
+        let buffer_len = self.buffer.len();
 
         while total_written < file_size {
             if self.is_cancelled() {
                 return Ok(());
             }
             let remaining = file_size - total_written;
-            let current_chunk = std::cmp::min(self.buffer_size as u64, remaining) as usize;
-            self.file.write_all(&buffer[..current_chunk])?;
+            let current_chunk = std::cmp::min(buffer_len as u64, remaining) as usize;
+            self.file.write_all(&self.buffer[..current_chunk])?;
             total_written += current_chunk as u64;
         }
 
@@ -144,28 +147,21 @@ impl<'a> Overwriter<'a> {
         self.file.seek(SeekFrom::Start(0))?;
 
         let mut rng = StdRng::from_entropy();
-        let mut buffer = vec![0u8; self.buffer_size];
         let mut total_written: u64 = 0;
+        let buffer_len = self.buffer.len();
 
         while total_written < file_size {
             if self.is_cancelled() {
                 return Ok(());
             }
             let remaining = file_size - total_written;
-            let current_chunk = std::cmp::min(self.buffer_size as u64, remaining) as usize;
-            rng.fill_bytes(&mut buffer[..current_chunk]);
-            self.file.write_all(&buffer[..current_chunk])?;
+            let current_chunk = std::cmp::min(buffer_len as u64, remaining) as usize;
+            rng.fill_bytes(&mut self.buffer[..current_chunk]);
+            self.file.write_all(&self.buffer[..current_chunk])?;
             total_written += current_chunk as u64;
         }
 
         self.file.sync_all()?;
-
-        // For random, we just verify that it's readable and matches nothing specific?
-        // Actually, for random, verification is harder unless we keep the seed.
-        // We'll just skip detailed content verification for random for now,
-        // or just verify it's not all zeros if that's what we want.
-        // Most tools just verify fixed patterns.
-
         Ok(())
     }
 
@@ -173,18 +169,18 @@ impl<'a> Overwriter<'a> {
         let file_size = self.file.metadata()?.len();
         self.file.seek(SeekFrom::Start(0))?;
 
-        let mut buffer = vec![0u8; self.buffer_size];
         let mut total_read: u64 = 0;
+        let buffer_len = self.buffer.len();
 
         while total_read < file_size {
             if self.is_cancelled() {
                 return Ok(());
             }
             let remaining = file_size - total_read;
-            let current_chunk = std::cmp::min(self.buffer_size as u64, remaining) as usize;
-            self.file.read_exact(&mut buffer[..current_chunk])?;
+            let current_chunk = std::cmp::min(buffer_len as u64, remaining) as usize;
+            self.file.read_exact(&mut self.buffer[..current_chunk])?;
 
-            for &byte in &buffer[..current_chunk] {
+            for &byte in &self.buffer[..current_chunk] {
                 if self.is_cancelled() {
                     return Ok(());
                 }
